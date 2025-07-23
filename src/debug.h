@@ -4,8 +4,10 @@
 #include "chunk.h"
 
 /*This method helps with disassembling the given instructions */
-void disassemble(Chunk* chunk, const char* name);
+void disassembleChunk(Chunk* chunk, const char* name);
 
 int disassembleInstruction(Chunk* chunk, int offset);
+
+static int simpleInstruction(const char* name, int offset);
 
 #endif
