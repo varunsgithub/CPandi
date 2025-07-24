@@ -3,8 +3,8 @@ CC = gcc
 CFLAGS = -I.
 
 # Source files and object files
-DEPS = common.h debug.h chunk.h memory.h
-OBJ = main.o debug.o chunk.o memory.o
+DEPS = common.h debug.h chunk.h memory.h value.h
+OBJ = main.o debug.o chunk.o memory.o value.o
 
 # Default target
 main: $(OBJ)
