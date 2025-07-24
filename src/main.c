@@ -7,6 +7,17 @@ int main (int argc, const char* argv[]) {
     Chunk chunk;
     //Initialize it
     initChunk(&chunk);
+    
+    
+    //Test
+    //Storing the constant in the constant pool
+    int constant = addConstant(&chunk, 1.2);
+    //Write code to the main chunk with OP CODE and the Constant
+    writeChunk(&chunk, OP_CONSTANT);
+    writeChunk(&chunk, constant);
+    
+
+
     //Write it ?
     writeChunk(&chunk, OP_RETURN);
     

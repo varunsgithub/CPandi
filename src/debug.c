@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "debug.h"
+#include "value.h"
 
 void disassembleChunk(Chunk* chunk, const char* name) {
     //Print the beginning with the name !
@@ -23,6 +24,8 @@ int disassembleInstruction(Chunk* chunk, int offset) {
 
     //Check the instruction
     switch(instruction) {
+        case OP_CONSTANT:
+            return constantInstruction("OP_CONSTANT", chunk, offset);
         //If it is OP_Return then return, Simple Instructions
         case OP_RETURN:
             return simpleInstruction("OP_RETURN", offset);
@@ -30,6 +33,18 @@ int disassembleInstruction(Chunk* chunk, int offset) {
             printf("Unknown opcode %d\n", instruction);
             return offset + 1;
     }
+}
+
+/*Method to read constant instructions !! */
+static int constantInstruction(const char* name, Chunk* chunk, int offset) {
+    //Store the constant (which should be next to OP code hence +1)
+    uint8_t constant = chunk->code[offset+1];
+    //print the name and the constant
+    printf("%-16s %4d ' ", name, constant);
+    //get the value from the constant pool
+    printValue(chunk->constants.values[constant]);
+    printf("'\n");
+    return offset+2;
 }
 
 static int simpleInstruction(const char* name, int offset) {

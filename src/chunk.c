@@ -9,11 +9,14 @@ void initChunk(Chunk* chunk) {
     chunk->capacity = 0;
     //This is the array that will store the chunks of code
     chunk->code = NULL;
+    //Initialising the constants !!
+    initValueArray(&chunk->constants);
 }
 
 void freeChunk(Chunk* chunk) {
     //The array is first freed using the FREE_ARRAY macro
     FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
+    freeValueArray(&chunk->constants);
     //The next step after completely cleaning the array is that we call the init_chunk to 
     // return the array to an empty state :)
     initChunk(chunk);
@@ -37,3 +40,9 @@ void writeChunk(Chunk* chunk, uint8_t byte) {
     chunk->count++;
 }
 
+/*This method writes the values to the chunk and then returns the 0 based index 
+of the last element appended*/
+int addConstant(Chunk* chunk, Value value) {
+    writeValueArray(&chunk->constants, value);
+    return chunk->constants.count - 1;
+}

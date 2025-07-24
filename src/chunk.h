@@ -4,12 +4,14 @@
 #define cpandi_chunk_h
 
 #include "common.h"
+#include "value.h"
 
 /*We create a typedef called enum which
 Stores the operation codes, these assist us in developing the byte code
 and are called op codes for short*/
 
 typedef enum {
+OP_CONSTANT,
 OP_RETURN,
 } OpCode;
 
@@ -19,6 +21,7 @@ typedef struct {
     int capacity;
     /*And a code !!!*/
     uint8_t* code;
+    ValueArray constants;
 } Chunk;
 
 
@@ -31,5 +34,7 @@ void freeChunk(Chunk* chunk);
 /*This method is used for appending a byte to the end of the chunk*/
 void writeChunk(Chunk* chunk, uint8_t byte);
 
+/*Method to add constants to the chunk*/
+int addConstant(Chunk* chunk, Value value);
 
 #endif
