@@ -17,7 +17,14 @@ void disassembleChunk(Chunk* chunk, const char* name) {
 int disassembleInstruction(Chunk* chunk, int offset) {
     //Print the offset !
     printf("%04d ", offset);
-    
+      
+    if (offset > 0 &&
+    chunk->lines[offset] == chunk->lines[offset - 1]) {
+        printf("   | ");
+  } else {
+        printf("%4d ", chunk->lines[offset]);
+  }
+
     //the instruction is then taken in from the array !
     // from the offset
     uint8_t instruction = chunk->code[offset];
@@ -51,4 +58,3 @@ static int simpleInstruction(const char* name, int offset) {
     printf("%s\n", name);
     return offset + 1;
 }
-

@@ -21,6 +21,8 @@ typedef struct {
     int capacity;
     /*And a code !!!*/
     uint8_t* code;
+    //for storing the line numbers
+    int* lines;
     ValueArray constants;
 } Chunk;
 
@@ -32,7 +34,7 @@ void initChunk(Chunk* chunk);
 void freeChunk(Chunk* chunk);
 
 /*This method is used for appending a byte to the end of the chunk*/
-void writeChunk(Chunk* chunk, uint8_t byte);
+void writeChunk(Chunk* chunk, uint8_t byte, int line);
 
 /*Method to add constants to the chunk*/
 int addConstant(Chunk* chunk, Value value);

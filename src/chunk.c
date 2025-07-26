@@ -9,6 +9,8 @@ void initChunk(Chunk* chunk) {
     chunk->capacity = 0;
     //This is the array that will store the chunks of code
     chunk->code = NULL;
+    //The line number is set to null in beg.
+    chunk->lines = NULL;
     //Initialising the constants !!
     initValueArray(&chunk->constants);
 }
@@ -16,6 +18,8 @@ void initChunk(Chunk* chunk) {
 void freeChunk(Chunk* chunk) {
     //The array is first freed using the FREE_ARRAY macro
     FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
+    //Free the line number array
+    FREE_ARRAY(int, chunk->lines, chunk->capacity);
     freeValueArray(&chunk->constants);
     //The next step after completely cleaning the array is that we call the init_chunk to 
     // return the array to an empty state :)
@@ -25,7 +29,7 @@ void freeChunk(Chunk* chunk) {
 
 
 
-void writeChunk(Chunk* chunk, uint8_t byte) {
+void writeChunk(Chunk* chunk, uint8_t byte, int line) {
     //First check if the capacity of the chunk is lower than the count + 1
     if (chunk->capacity < chunk->count + 1) {
         //If the capacity is low, then we grow the capacity
@@ -33,9 +37,13 @@ void writeChunk(Chunk* chunk, uint8_t byte) {
         chunk->capacity = GROW_CAPACITY(oldCapacity);
         //And we grow the array
         chunk->code = GROW_ARRAY(uint8_t, chunk->code, oldCapacity, chunk->capacity);
+        //and we also grow the line array
+        chunk->lines = GROW_ARRAY(uint8_t, chunk->lines, oldCapacity, chunk->capacity);
     }
     //Next we go into the chunk's array and store the code in the last byte (count)
     chunk->code[chunk->count] = byte;
+    //store the line numbers in the line array
+    chunk->lines[chunk->count] = line;
     //Increment the count to the next byte !!
     chunk->count++;
 }

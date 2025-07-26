@@ -13,13 +13,13 @@ int main (int argc, const char* argv[]) {
     //Storing the constant in the constant pool
     int constant = addConstant(&chunk, 1.2);
     //Write code to the main chunk with OP CODE and the Constant
-    writeChunk(&chunk, OP_CONSTANT);
-    writeChunk(&chunk, constant);
+    writeChunk(&chunk, OP_CONSTANT, 123);
+    writeChunk(&chunk, constant, 123);
     
 
 
     //Write it ?
-    writeChunk(&chunk, OP_RETURN);
+    writeChunk(&chunk, OP_RETURN, 123);
     
     //Trying out the tests
     disassembleChunk(&chunk, "test_chunk");
