@@ -2,6 +2,8 @@
 #define cpandi_vm_h
 
 #include "chunk.h"
+#include "value.h"
+#define STACK_MAX 256
 
 /* Defining a data structure to keep a track of the state of the VM */
 typedef struct {
@@ -10,6 +12,9 @@ typedef struct {
     //instruction pointer -> IP
     //This points to the chunk array
     uint8_t* ip;
+    //Creating a VM stack for interpreting instructions
+    Value stack[STACK_MAX];
+    Value* stackTop;
 } VM;
 
 /*Return values for the result of the interpretation of the VM*/
@@ -26,6 +31,14 @@ void freeVM();
 /*Method to interpret the bytecode*/
 InterpretResult interpret(Chunk* chunk);
 
+/*Stack operation to push a value on the stack*/
+void push(Value value);
+
+/*Stack operation to remove and return the topmost value from the stack*/
+Value pop();
+
 static InterpretResult run();
+
+static void resetStack();
 
 #endif

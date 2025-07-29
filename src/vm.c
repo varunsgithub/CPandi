@@ -7,9 +7,32 @@
 /*Defining a global variable called VM !*/
 VM vm;
 
-void initVM() {}
+static void resetStack() {
+    //This shows that the stack is empty since the stackTop points to 0
+    vm.stackTop = vm.stack;
+}
+
+void initVM() {
+    resetStack();
+}
 
 void freeVM() {}
+
+void push(Value value) {
+    //Dereference the top and put a value
+    *vm.stackTop = value;
+    //incrmeent the pointer.
+    vm.stackTop++;
+}
+
+Value pop() {
+    //Decrement the pointer to go to the value below
+    //since the pointer has gone below, the current value where it points
+    //becomes inaccessible !!!
+    vm.stackTop--;
+    //return the value
+    return *vm.stackTop;
+}
 
 
 static InterpretResult run() {
@@ -23,6 +46,13 @@ static InterpretResult run() {
     for (;;) {
         //If the flag DTE is defined then print each instruction 
         #ifdef DEBUG_TRACE_EXECUTION
+            printf("          ");
+            for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
+            printf("[ ");
+            printValue(*slot);
+            printf(" ]");
+            }
+            printf("\n");
         //doing pointer math to convert the ip back to a relative offset from the beginning.
         // eg if you started at x8828 and beginning is x8820 then it starts with offset 8 :)
             disassembleInstruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
@@ -34,11 +64,14 @@ static InterpretResult run() {
             //Check which OP code it is
             case OP_CONSTANT: {
                 Value constant = READ_CONSTANT();
-                printValue(constant);
-                printf("\n");
+                //The constant that is read is pushed on the VM's stack.
+                push(constant);
                 break;
             }
             case OP_RETURN: {
+                //When a return is read, the stack is popped !!
+                printValue(pop());
+                printf("\n");
                 return INTERPRET_OK;
             }
         }
