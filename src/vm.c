@@ -42,6 +42,13 @@ static InterpretResult run() {
     /*The read constant macro will read the index number of the constant value, and fetch 
     it from the value constant pool*/
     #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+    //MACRO for binary operations !!!
+    #define BINARY_OP(op) \
+        do {\
+            double b = pop(); \
+            double a = pop(); \
+            push(a op b); \
+            } while(false)
 
     for (;;) {
         //If the flag DTE is defined then print each instruction 
@@ -68,6 +75,13 @@ static InterpretResult run() {
                 push(constant);
                 break;
             }
+            case OP_ADD: BINARY_OP(+); break;
+            case OP_SUBTRACT: BINARY_OP(-); break;
+            case OP_MULTIPLY: BINARY_OP(*); break;
+            case OP_DIVIDE: BINARY_OP(/); break;
+            //In case the value is a simple negate instruction, take the constant at the 
+            //top of the stack and simply pop and push a negative version of it.
+            case OP_NEGATE: push(-pop()); break;
             case OP_RETURN: {
                 //When a return is read, the stack is popped !!
                 printValue(pop());
@@ -80,6 +94,7 @@ static InterpretResult run() {
     //Undefine the macros -> since they are function specific.
     #undef READ_BYTE
     #undef READ_CONSTANT
+    #undef BINARY_OP
 }
 
 
