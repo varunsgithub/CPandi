@@ -38,7 +38,7 @@ void writeChunk(Chunk* chunk, uint8_t byte, int line) {
         //And we grow the array
         chunk->code = GROW_ARRAY(uint8_t, chunk->code, oldCapacity, chunk->capacity);
         //and we also grow the line array
-        chunk->lines = GROW_ARRAY(uint8_t, chunk->lines, oldCapacity, chunk->capacity);
+        chunk->lines = GROW_ARRAY(int, chunk->lines, oldCapacity, chunk->capacity);
     }
     //Next we go into the chunk's array and store the code in the last byte (count)
     chunk->code[chunk->count] = byte;

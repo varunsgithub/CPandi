@@ -1,8 +1,11 @@
 #include "common.h"
 #include "chunk.h"
 #include "debug.h"
+#include "vm.h"
 
 int main (int argc, const char* argv[]) {
+    //Initialize a VM when the program runs
+    initVM();
     //Create a struct chunk
     Chunk chunk;
     //Initialize it
@@ -23,7 +26,10 @@ int main (int argc, const char* argv[]) {
     
     //Trying out the tests
     disassembleChunk(&chunk, "test_chunk");
-
+    //Interpret a chunk of bytecode and lo ! the VM is here on its duty
+    interpret(&chunk);
+    //Free the VM when exiting
+    freeVM();
     //free it !!
     freeChunk(&chunk);
     return 0;

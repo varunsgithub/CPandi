@@ -3,8 +3,8 @@ CC = gcc
 CFLAGS = -I.
 
 # Source files and object files
-DEPS = common.h debug.h chunk.h memory.h value.h
-OBJ = main.o debug.o chunk.o memory.o value.o
+DEPS = common.h debug.h chunk.h memory.h value.h vm.h
+OBJ = main.o debug.o chunk.o memory.o value.o vm.o
 
 # Default target
 main: $(OBJ)
@@ -15,5 +15,5 @@ main: $(OBJ)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 # Clean target to remove binaries
-clean:
+destruct:
 	rm -f *.o main
