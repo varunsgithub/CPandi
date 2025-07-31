@@ -29,7 +29,7 @@ void initVM();
 /*Method to clean the VM*/
 void freeVM();
 /*Method to interpret the bytecode*/
-InterpretResult interpret(Chunk* chunk);
+InterpretResult interpret(const char* source);
 
 /*Stack operation to push a value on the stack*/
 void push(Value value);

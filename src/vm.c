@@ -2,6 +2,7 @@
 #include "vm.h"
 #include <stdio.h>
 #include "debug.h"
+#include "compiler.h"
 
 
 /*Defining a global variable called VM !*/
@@ -98,11 +99,9 @@ static InterpretResult run() {
 }
 
 
-InterpretResult interpret(Chunk* chunk) {
-    //The code is stored in the VM's chunk
-    vm.chunk = chunk;
-    //Next the location of this bytecode is stored in a variable called IP
-    vm.ip = vm.chunk->code;
-    //the bytecode nstruction is run.
-    return run();
+InterpretResult interpret(const char* source) {
+    //Compile the source code into useful bytecode
+    compile(source);
+    //return the interpretation went through
+    return INTERPRET_OK;
 }
