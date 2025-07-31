@@ -49,6 +49,9 @@ static TokenType identifierType();
 /*Converts numbers*/
 static Token number();
 
+/*This function will check the rest of the lexeme to identify the identifier*/
+static TokenType checkKeyword(int start, int length, const char* rest, TokenType type);
+
 /*Enum for tokentype*/
 typedef enum {
   // Single-character tokens.
