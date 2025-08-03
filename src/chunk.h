@@ -24,7 +24,7 @@ OP_RETURN,
 typedef struct {
     int count;
     int capacity;
-    /*And a code !!!*/
+    /*And an array for bytecode !!!*/
     uint8_t* code;
     //for storing the line numbers
     int* lines;

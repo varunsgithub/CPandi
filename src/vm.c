@@ -100,8 +100,28 @@ static InterpretResult run() {
 
 
 InterpretResult interpret(const char* source) {
-    //Compile the source code into useful bytecode
-    compile(source);
-    //return the interpretation went through
-    return INTERPRET_OK;
+    //Create a new chunk for the bytecode !!
+    Chunk chunk;
+
+    //initialize the chunk !
+    initChunk(&chunk);
+
+    if (!compile(source, &chunk)) {
+        
+        freeChunk(&chunk);
+        
+        return INTERPRET_COMPILE_ERROR;
+    }
+
+    //the virtual machine's bytecode chunk is linked to the compiled chunk !1
+    vm.chunk = &chunk;
+    //the instruction pointer now points to the array of bytecode !!!
+    vm.ip = vm.chunk->code;
+
+
+    InterpretResult result = run();
+
+    //delete the chunk and return the result !
+    freeChunk(&chunk);
+    return result;
 }

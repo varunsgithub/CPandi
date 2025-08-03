@@ -1,57 +1,6 @@
 #ifndef cpandi_scanner_h
 #define cpandi_scanner_h
 
-/*The initializer sets all the parameter to the source and line to 1*/
-void initScanner(const char* source);
-
-/*Scans the tokens*/
-Token scanToken();
-
-/*The method helps check if the pointer is at the end of the lexeme*/
-static bool isAtEnd();
-
-/*Helps convert the lexeme into a cpandi token*/
-static Token makeToken(TokenType type);
-
-/*Helps create a error token*/
-static Token errorToken(const char* message);
-
-/*advances the next lexeme*/
-static char advance();
-
-/*Matches characters !!*/
-static bool match(char expected);
-
-/*Helps skipping whitespaces :)*/
-static void skipWhitespace();
-
-/*Peeks the character in front*/
-static char peek();
-
-/*Helps look ahead (1 character)*/
-static char peekNext();
-
-/*The string function reads literal values*/
-static Token string();
-
-/*Function to check for numbers*/
-static bool isDigit(char c);
-
-/*Check if the given character is an alphabet*/
-static bool isAlpha(char c);
-
-/*Check if the given lexeme is an identifier*/
-static Token identifier();
-
-/*return the identifier type*/
-static TokenType identifierType();
-
-/*Converts numbers*/
-static Token number();
-
-/*This function will check the rest of the lexeme to identify the identifier*/
-static TokenType checkKeyword(int start, int length, const char* rest, TokenType type);
-
 /*Enum for tokentype*/
 typedef enum {
   // Single-character tokens.
@@ -76,12 +25,18 @@ typedef enum {
 } TokenType;
 
 
-/*Struct for token*/
+/*Struct for token has a TokenType, the Start pointer, its length and line*/
 typedef struct {
     TokenType type;
     const char* start;
     int length;
     int line;
 } Token;
+
+/*The initializer sets all the parameter to the source and line to 1*/
+void initScanner(const char* source);
+
+/*Scans the tokens*/
+Token scanToken();
 
 #endif

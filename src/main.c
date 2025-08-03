@@ -28,20 +28,6 @@ static void repl() {
   }
 }
 
-/*The runfile method will read the file contents and interpret the results*/
-static void runFile(const char* path) {
-  //The source of the file, is stored as a char* array !
-  char* source = readFile(path);
-  //The result of the interpret result is stored in a result factor
-  InterpretResult result = interpret(source);
-  //free the source pointer !!
-  free(source);
-
-  //if the result results into a compile error/ runtime error -> Exit 
-  if (result == INTERPRET_COMPILE_ERROR) exit(65);
-  if (result == INTERPRET_RUNTIME_ERROR) exit(70);
-}
-
 /*The read file method opens the file path and reads the entire content of the file*/
 static char* readFile(const char* path) {
   //The file pointer opens the path with read binary !
@@ -83,6 +69,20 @@ static char* readFile(const char* path) {
   //fclose the file !
   fclose(file);
   return buffer;
+}
+
+/*The runfile method will read the file contents and interpret the results*/
+static void runFile(const char* path) {
+  //The source of the file, is stored as a char* array !
+  char* source = readFile(path);
+  //The result of the interpret result is stored in a result factor
+  InterpretResult result = interpret(source);
+  //free the source pointer !!
+  free(source);
+
+  //if the result results into a compile error/ runtime error -> Exit 
+  if (result == INTERPRET_COMPILE_ERROR) exit(65);
+  if (result == INTERPRET_RUNTIME_ERROR) exit(70);
 }
 
 
