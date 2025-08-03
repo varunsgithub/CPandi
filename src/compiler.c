@@ -88,8 +88,38 @@ static void emitReturn() {
     emitByte(OP_RETURN);
 }
 
+static uint8_t makeConstant(Value value) {
+    //The add constant method will access the bytecode's constant pool and add the value to it
+    int constant = addConstant(currentChunk(), value);
+    if (constant > UINT8_MAX) {
+        error("Too many constants in one chunk da ");
+        return 0;
+    }
+
+    return (uint8_t)constant;
+}
+
+static void emitConstant(Value value) {
+    emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
 static void endCompiler() {
     emitReturn();
+}
+
+static void grouping() {
+    //The expression is ... ?
+    expression();
+    //The right parenthesis is consumed !
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+}
+
+
+static void number() {
+    //strtod converts a string to a double int 
+    double value = strtod(parser.previous.start, NULL);
+    //emit the value !
+    emitConstant(value);
 }
 
 /*When compiling, the tokenized source code and the chunk where the 
