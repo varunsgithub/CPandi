@@ -45,6 +45,12 @@ static char peek() {
     return *scanner.current;
 }
 
+static bool isAtEnd() {
+    //Return if the current position of the scanner is at the end 
+    // Note that the end of the scanner is always '\0'
+    return *scanner.current == '\0';
+}
+
 static char peekNext() {
     if (isAtEnd()) return '\0';
     //return the current + 1 position !!!!
@@ -57,13 +63,6 @@ static bool match(char expected) {
     //if it is true then advance the pointer.
     scanner.current++;
     return true;
-}
-
-
-static bool isAtEnd() {
-    //Return if the current position of the scanner is at the end 
-    // Note that the end of the scanner is always '\0'
-    return *scanner.current == '\0';
 }
 
 /*This method is executed after the current position of the scanner realises that there

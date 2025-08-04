@@ -5,6 +5,10 @@
 #include "scanner.h"
 #include <stdlib.h>
 
+#ifdef DEBUG_PRINT_CODE
+#include "debug.h"
+#endif
+
 //Struct for storing tokens
 typedef struct {
     Token current;
@@ -12,6 +16,34 @@ typedef struct {
     bool hadError;
     bool panicMode;
 } Parser;
+
+/*The operands are consumed as per the order of precedence
+If a higher precedence (eg assignment) is passed to the precedence function then all the other operators will be chewed
+through until the assignment operator is arrived at !*/
+typedef enum {
+  PREC_NONE,
+  PREC_ASSIGNMENT,  // =
+  PREC_OR,          // or
+  PREC_AND,         // and
+  PREC_EQUALITY,    // == !=
+  PREC_COMPARISON,  // < > <= >=
+  PREC_TERM,        // + -
+  PREC_FACTOR,      // * /
+  PREC_UNARY,       // ! -
+  PREC_CALL,        // . ()
+  PREC_PRIMARY
+} Precedence;
+
+typedef void (*ParseFn)();
+
+typedef struct {
+    //get the function for the prefix operator !
+    ParseFn prefix;
+    //get the function for the infix operator !
+    ParseFn infix;
+    //get the function for the precedence !
+    Precedence precedence;
+} ParseRule;
 
 Parser parser;
 
@@ -105,6 +137,45 @@ static void emitConstant(Value value) {
 
 static void endCompiler() {
     emitReturn();
+    #ifdef DEBUG_PRINT_CODE
+    if (!parser.hadError) {
+        disassembleChunk(currentChunk(), "code");
+    }
+    #endif
+}
+
+//These are the function declarations (Feed forwards) so that they can be used by 
+// the remaining function calls !
+static void expression();
+static ParseRule* getRule(TokenType type);
+static void parsePrecedence(Precedence precedence);
+
+static void binary() {
+    // The token type is saved 
+    TokenType operatorType = parser.previous.type;
+    // the rule is obtained from the operator type !
+    ParseRule* rule = getRule(operatorType);
+    // the precedence is set
+    parsePrecedence((Precedence) (rule->precedence + 1));
+
+    switch (operatorType) {
+        //basis the operator ->the chunk of bytecode !
+        case TOKEN_PLUS:    emitByte(OP_ADD); break;
+        //the minus is then -> subtracted
+        case TOKEN_MINUS:   emitByte(OP_SUBTRACT); break;
+        //star -> the multiply the bytecode
+        case TOKEN_STAR:    emitByte(OP_MULTIPLY); break;
+        // divide
+        case TOKEN_SLASH:   emitByte(OP_DIVIDE); break;
+        
+        default: return;
+    }
+}
+
+static void expression() {
+    //the expression function shall parse the lowest precedence which shall 
+    //consume all other expressions !
+    parsePrecedence(PREC_ASSIGNMENT);
 }
 
 static void grouping() {
@@ -120,6 +191,107 @@ static void number() {
     double value = strtod(parser.previous.start, NULL);
     //emit the value !
     emitConstant(value);
+}
+
+static void unary() {
+    //the previous token's type is saved into the operator type !!
+    TokenType operatorType = parser.previous.type;
+
+    //we limit the compilation to the point of finding the unary operator!
+    parsePrecedence(PREC_UNARY);
+    
+    //In case the type is a negate
+    switch (operatorType) {
+        //the negate is stored in the bytecode chunk !
+        case TOKEN_MINUS: emitByte(OP_NEGATE); break;
+        //default -> will return from the function !
+        default: return;
+    }
+
+    // It might look weird that when you emit the chunk of bytecode (NEGATE)
+    // after the expression !! (EG: 1.2 -)...
+    // Also we need a way to stop the operand from being chewed in the expression format
+}
+
+/*This is the PRATT parser table which is used to fetch the functions for the respective
+TOKENS. The pratt parser then fetches the precedence basis the table !*/
+//The array is a ParseRule array !!!
+ParseRule rules[] = {
+    //Token = {Prefix (ParseFn ptr), Infix (ParseFn ptr), Precedence:)}
+  [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
+  [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE}, 
+  [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_COMMA]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_DOT]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_MINUS]         = {unary,    binary, PREC_TERM},
+  [TOKEN_PLUS]          = {NULL,     binary, PREC_TERM},
+  [TOKEN_SEMICOLON]     = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_SLASH]         = {NULL,     binary, PREC_FACTOR},
+  [TOKEN_STAR]          = {NULL,     binary, PREC_FACTOR},
+  [TOKEN_BANG]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_BANG_EQUAL]    = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_EQUAL]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_EQUAL_EQUAL]   = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_GREATER]       = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_GREATER_EQUAL] = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_LESS]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_LESS_EQUAL]    = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
+  [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_FALSE]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_FOR]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_NIL]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_OR]            = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_THIS]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_TRUE]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
+};
+
+static void parsePrecedence(Precedence precedence) {
+    //Advance the compiler by one token!
+    advance();
+
+    //prefix rule -> 
+    // ParseFn is a typedef for a function pointer -> what it does is that
+    // whatever function is fetched from the get rule function is replaced in the pointer
+    // so the thing becomes void (*the function that is fetched) ();
+    ParseFn prefixRule = getRule(parser.previous.type)->prefix;
+
+    if (prefixRule == NULL) {
+        //error -> give expect expression !
+        error("Expect expression.");
+        return;
+    }
+
+    //call the function so stored in the prefixRule !!
+    prefixRule();
+
+    while (precedence <= getRule(parser.current.type)->precedence) {
+        //Advance the pointer !
+        advance();
+        //ParseFn infixRule -> get the inflix fn 
+        ParseFn infixRule = getRule(parser.previous.type)->infix;
+        //run the inflix function
+        infixRule();
+    }
+}
+
+static ParseRule* getRule(TokenType type) {
+    //
+    return &rules[type];
 }
 
 /*When compiling, the tokenized source code and the chunk where the 

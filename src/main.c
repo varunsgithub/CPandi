@@ -14,7 +14,7 @@ static void repl() {
   
   for (;;) {
     //print the catface asking for line of code on each line
-    printf("(˃ᆺ˂): ");
+    printf("(˃ᆺ ˂): ");
 
     //if you do not read anything then break out of the for loop
     if (!fgets(line, sizeof(line), stdin)) {
