@@ -290,7 +290,6 @@ static void parsePrecedence(Precedence precedence) {
 }
 
 static ParseRule* getRule(TokenType type) {
-    //
     return &rules[type];
 }
 
@@ -308,7 +307,6 @@ bool compile(const char* source, Chunk* chunk) {
     //Reads the error free tokens !!
     advance();
     
-    //
     expression();
     
     //Consumes the last token ! -> If there is no proper end... throws an error
