@@ -1,5 +1,6 @@
 #include "common.h"
 #include "vm.h"
+#include <stdarg.h>
 #include <stdio.h>
 #include "debug.h"
 #include "compiler.h"
@@ -12,6 +13,24 @@ static void resetStack() {
     //This shows that the stack is empty since the stackTop points to 0
     vm.stackTop = vm.stack;
 }
+
+/*Print a runtime error for unlimited args*/
+static void runtimeError(const char* format, ...) {
+    //The va_list is a way that stores the unlimited (...) args
+    va_list args;
+    va_start(args, format);
+    //vfprintf helps print those unlimited args
+    vfprintf(stderr, format, args);
+    va_end(args);
+    
+    fputs("\n", stderr);
+    size_t instruction = vm.ip - vm.chunk->code - 1;
+    int line = vm.chunk-> lines[instruction];
+    fprintf(stderr, "[line %d] in script\n", line);
+    resetStack();
+}
+
+
 
 void initVM() {
     resetStack();
@@ -35,6 +54,11 @@ Value pop() {
     return *vm.stackTop;
 }
 
+/*Helps peek the stack with the given distance*/
+static Value peek(int distance) {
+    return vm.stackTop[-1 - distance];
+}
+
 
 static InterpretResult run() {
     //Start with defining macros
@@ -44,11 +68,15 @@ static InterpretResult run() {
     it from the value constant pool*/
     #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
     //MACRO for binary operations !!!
-    #define BINARY_OP(op) \
+    #define BINARY_OP(valueType, op) \
         do {\
-            double b = pop(); \
-            double a = pop(); \
-            push(a op b); \
+            if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) { \
+            runtimeError("Operands must be numbers"); \
+            return INTERPRET_RUNTIME_ERROR; \
+            } \
+            double b = AS_NUMBER(pop()); \
+            double a = AS_NUMBER(pop()); \
+            push(valueType(a op b)); \
             } while(false)
 
     for (;;) {
@@ -76,13 +104,22 @@ static InterpretResult run() {
                 push(constant);
                 break;
             }
-            case OP_ADD: BINARY_OP(+); break;
-            case OP_SUBTRACT: BINARY_OP(-); break;
-            case OP_MULTIPLY: BINARY_OP(*); break;
-            case OP_DIVIDE: BINARY_OP(/); break;
+            case OP_NIL:      push(NIL_VAL);            break;
+            case OP_TRUE:     push(BOOL_VAL(true));     break;
+            case OP_FALSE:    push(BOOL_VAL(false));    break;
+            case OP_ADD:      BINARY_OP(NUMBER_VAL, +); break;
+            case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, -); break;
+            case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
+            case OP_DIVIDE:   BINARY_OP(NUMBER_VAL, /); break;
             //In case the value is a simple negate instruction, take the constant at the 
             //top of the stack and simply pop and push a negative version of it.
-            case OP_NEGATE: push(-pop()); break;
+            case OP_NEGATE:
+                if (!IS_NUMBER(peek(0))) {
+                    runtimeError("Operand must be a number");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(NUMBER_VAL(-AS_NUMBER(pop())));
+                break;
             case OP_RETURN: {
                 //When a return is read, the stack is popped !!
                 printValue(pop());
