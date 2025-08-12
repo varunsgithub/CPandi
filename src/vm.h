@@ -15,6 +15,8 @@ typedef struct {
     //Creating a VM stack for interpreting instructions
     Value stack[STACK_MAX];
     Value* stackTop;
+    //The objects is an object pointer which is the head of our linked list !
+    Obj* objects;
 } VM;
 
 /*Return values for the result of the interpretation of the VM*/
@@ -23,6 +25,8 @@ typedef enum {
     INTERPRET_COMPILE_ERROR,
     INTERPRET_RUNTIME_ERROR
 } InterpretResult;
+
+extern VM vm;
 
 /*Method to initialize the VM*/
 void initVM();

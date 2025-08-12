@@ -2,9 +2,12 @@
 #define cpandi_memory_h
 
 #include "common.h"
+#include "object.h"
 
 #define ALLOCATE(type, count) \
     (type*)reallocate(NULL, 0, sizeof(type) * (count))
+
+#define FREE(type, pointer) reallocate(pointer, sizeof(type), 0)
 
 // The essence of this preprocessor macro is that it takes in the capacity
 // and it checks if it is lower than 8 then it puts the capacity as 8
@@ -23,5 +26,8 @@
 
 /*The re allocate function helps resize the array*/
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
+
+/*The free objects method helps clear memory on heap allocated for the objects*/
+void freeObjects();
 
 #endif

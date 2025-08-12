@@ -22,6 +22,9 @@ typedef enum {
 struct Obj {
     //The first tag is an identifier for storing the size !
     ObjType type;
+    //the second tag helps in identifying memory objects
+    //This is done by creating a linked list like structure which holds the reference to the next object
+    struct Obj* next;
 };
 
 struct ObjString {

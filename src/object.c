@@ -17,6 +17,12 @@ stores the type and returns the same*/
 static Obj* allocateObject(size_t size, ObjType type) {
     Obj* object = (Obj*)reallocate(NULL, 0, size);
     object->type = type;
+    
+    //The next pointer stores the reference of the previous head
+    object->next = vm.objects;
+    //The new head is then updated to the current object
+    vm.objects = object;
+
     return object;
 }
 
