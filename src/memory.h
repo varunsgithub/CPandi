@@ -3,6 +3,9 @@
 
 #include "common.h"
 
+#define ALLOCATE(type, count) \
+    (type*)reallocate(NULL, 0, sizeof(type) * (count))
+
 // The essence of this preprocessor macro is that it takes in the capacity
 // and it checks if it is lower than 8 then it puts the capacity as 8
 // if not then it just multiplies it by 2
@@ -18,7 +21,7 @@
 
 //The line breaks in the macro(#define) are representative of line breaks....
 
-/*The re allocate function which helps resize the array*/
+/*The re allocate function helps resize the array*/
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
 
 #endif
