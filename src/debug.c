@@ -40,6 +40,12 @@ int disassembleInstruction(Chunk* chunk, int offset) {
             return simpleInstruction("OP_TRUE", offset);
         case OP_FALSE:
             return simpleInstruction("OP_FALSE", offset);
+        case OP_EQUAL:
+            return simpleInstruction("OP_EQUAL", offset);
+        case OP_GREATER:
+            return simpleInstruction("OP_GREATER", offset);
+        case OP_LESS:
+            return simpleInstruction("OP_LESS", offset);
         //Disassemblers for binary operators !
         case OP_ADD:
             return simpleInstruction("OP_ADD", offset);
@@ -52,6 +58,9 @@ int disassembleInstruction(Chunk* chunk, int offset) {
         
         case OP_DIVIDE:
             return simpleInstruction("OP_DIVIDE", offset);
+        
+        case OP_NOT:
+            return simpleInstruction("OP_NOT", offset);
         
         //If it is OP_NEGATE then just return the Simple Instruction with OP_NEGATE!
         case OP_NEGATE:

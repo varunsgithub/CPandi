@@ -45,6 +45,8 @@ typedef struct {
     Value* values;
 } ValueArray;
 
+bool valuesEqual(Value a, Value b);
+
 /*Since we have a pointer array, we need a way to initialize, write and free it*/
 
 void initValueArray(ValueArray* array);
