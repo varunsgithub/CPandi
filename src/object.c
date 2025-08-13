@@ -28,25 +28,40 @@ static Obj* allocateObject(size_t size, ObjType type) {
 
 /*The allocate string function first creates an Obj pointer, then it stores the length,
 chars and returns the ObjString* */
-static ObjString* allocateString(char* chars, int length) {
+static ObjString* allocateString(char* chars, int length, uint32_t hash) {
     ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     string->length = length;
     string->chars = chars;
+    string->hash = hash;
     return string;
 }
 
+/*The hashstring function uses the FNV-1a hashing function to calculate the hash key*/
+static uint32_t hashString(const char* key, int length) {
+    uint32_t hash = 2166136261u;
+    for (int i = 0; i < length; i++) {
+        hash ^= (uint8_t) key[i];
+        hash *= 16777619;
+    }
+    return hash;
+}
+
+
+
 ObjString* takeString(char* chars, int length) {
-  return allocateString(chars, length);
+  uint32_t hash = hashString(chars, length);
+  return allocateString(chars, length, hash);
 }
 
 ObjString* copyString(const char* chars, int length) {
+    uint32_t hash = hashString(chars, length);
     //Create a char array to help allocate the char with a size of length + 1 (To accomodate the \0)
     char* heapChars = ALLOCATE(char, length + 1);
     //copy the chars into the heap array
     memcpy(heapChars, chars, length);
     //last element is the null termination
     heapChars[length] = '\0';
-    return allocateString(heapChars, length);
+    return allocateString(heapChars, length, hash);
 }
 
 void printObject(Value value) {
