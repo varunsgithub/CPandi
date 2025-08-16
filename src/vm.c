@@ -33,14 +33,14 @@ static void runtimeError(const char* format, ...) {
     resetStack();
 }
 
-
-
 void initVM() {
     resetStack();
     vm.objects = NULL;
+    initTable(&vm.strings);
 }
 
 void freeVM() {
+    freeTable(&vm.strings);
     freeObjects();
 }
 
