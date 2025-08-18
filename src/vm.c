@@ -36,10 +36,12 @@ static void runtimeError(const char* format, ...) {
 void initVM() {
     resetStack();
     vm.objects = NULL;
+    initTable(&vm.globals);
     initTable(&vm.strings);
 }
 
 void freeVM() {
+    freeTable(&vm.globals);
     freeTable(&vm.strings);
     freeObjects();
 }
@@ -94,6 +96,8 @@ static InterpretResult run() {
     /*The read constant macro will read the index number of the constant value, and fetch 
     it from the value constant pool*/
     #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+    /*This macro helps read the string from the stack*/
+    #define READ_STRING() AS_STRING(READ_CONSTANT())
     //MACRO for binary operations !!!
     #define BINARY_OP(valueType, op) \
         do { \
@@ -134,6 +138,36 @@ static InterpretResult run() {
             case OP_NIL:      push(NIL_VAL);                   break;
             case OP_TRUE:     push(BOOL_VAL(true));            break;
             case OP_FALSE:    push(BOOL_VAL(false));           break;
+            case OP_POP:      pop();                           break;
+            case OP_GET_GLOBAL: {
+                ObjString* name = READ_STRING();
+                Value value;
+                if (!tableGet(&vm.globals, name, &value)) {
+                    runtimeError("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(value);
+                break;
+            }
+            case OP_DEFINE_GLOBAL: {
+                ObjString* name = READ_STRING();
+                tableSet(&vm.globals, name, peek(0));
+                pop();
+                break;
+            }
+            case OP_SET_GLOBAL: {
+                //the name of the string is stored using the read string macro
+                ObjString* name = READ_STRING();
+                //if the key is new then the variable does not exist 
+                if (tableSet(&vm.globals, name, peek(0))) {
+                    //then delete the name from the global hash table (the one we ended up setting in table set)
+                    tableDelete(&vm.globals, name);
+                    //push a runtime error ->undefined variable
+                    runtimeError("Undefined variable '%s'", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
             case OP_EQUAL: {
                     Value b = pop();
                     Value a = pop();
@@ -169,6 +203,11 @@ static InterpretResult run() {
                 }
                 push(NUMBER_VAL(-AS_NUMBER(pop())));
                 break;
+            case OP_PRINT: {
+                printValue(pop());
+                printf("\n");
+                break;
+            }
             case OP_RETURN: {
                 //When a return is read, the stack is popped !!
                 printValue(pop());
@@ -180,6 +219,7 @@ static InterpretResult run() {
     
     //Undefine the macros -> since they are function specific.
     #undef READ_BYTE
+    #undef READ_STRING
     #undef READ_CONSTANT
     #undef BINARY_OP
 }

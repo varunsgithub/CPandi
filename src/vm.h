@@ -16,6 +16,8 @@ typedef struct {
     //Creating a VM stack for interpreting instructions
     Value stack[STACK_MAX];
     Value* stackTop;
+    //This is a hash table for storing the global variable
+    Table globals;
     //The objects is an object pointer which is the head of our linked list !
     Table strings;
     Obj* objects;

@@ -26,9 +26,6 @@ void freeChunk(Chunk* chunk) {
     initChunk(chunk);
 }
 
-
-
-
 void writeChunk(Chunk* chunk, uint8_t byte, int line) {
     //First check if the capacity of the chunk is lower than the count + 1
     if (chunk->capacity < chunk->count + 1) {
