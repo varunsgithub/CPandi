@@ -34,15 +34,25 @@ int disassembleInstruction(Chunk* chunk, int offset) {
     switch(instruction) {
         case OP_CONSTANT:
             return constantInstruction("OP_CONSTANT", chunk, offset);
+        
         case OP_NIL:
             return simpleInstruction("OP_NIL", offset);
+        
         case OP_TRUE:
             return simpleInstruction("OP_TRUE", offset);
+        
         case OP_FALSE:
             return simpleInstruction("OP_FALSE", offset);
+        
         case OP_POP:
             return simpleInstruction("OP_POP", offset);
         
+        case OP_GET_LOCAL:
+            return byteInstruction("OP_GET_LOCAL", chunk, offset);
+        
+        case OP_SET_LOCAL:
+            return byteInstruction("OP_SET_LOCAL", chunk, offset);
+
         case OP_GET_GLOBAL:
             return constantInstruction("OP_GET_GLOBAL", chunk, offset);
     
@@ -54,11 +64,14 @@ int disassembleInstruction(Chunk* chunk, int offset) {
         
         case OP_EQUAL:
             return simpleInstruction("OP_EQUAL", offset);
+        
         case OP_GREATER:
             return simpleInstruction("OP_GREATER", offset);
+        
         case OP_LESS:
             return simpleInstruction("OP_LESS", offset);
         //Disassemblers for binary operators !
+        
         case OP_ADD:
             return simpleInstruction("OP_ADD", offset);
         
@@ -106,4 +119,11 @@ static int constantInstruction(const char* name, Chunk* chunk, int offset) {
 static int simpleInstruction(const char* name, int offset) {
     printf("%s\n", name);
     return offset + 1;
+}
+
+static int byteInstruction(const char* name, Chunk* chunk,
+                           int offset) {
+  uint8_t slot = chunk->code[offset + 1];
+  printf("%-16s %4d\n", name, slot);
+  return offset + 2;
 }
