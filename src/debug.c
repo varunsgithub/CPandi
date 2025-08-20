@@ -15,6 +15,39 @@ void disassembleChunk(Chunk* chunk, const char* name) {
 
 }
 
+/*Method to read constant instructions !! */
+static int constantInstruction(const char* name, Chunk* chunk, int offset) {
+    //Store the constant (which should be next to OP code hence +1)
+    uint8_t constant = chunk->code[offset+1];
+    //print the name and the constant
+    printf("%-16s %4d ' ", name, constant);
+    //get the value from the constant pool
+    printValue(chunk->constants.values[constant]);
+    printf("'\n");
+    return offset+2;
+}
+
+static int simpleInstruction(const char* name, int offset) {
+    printf("%s\n", name);
+    return offset + 1;
+}
+
+static int byteInstruction(const char* name, Chunk* chunk,
+                           int offset) {
+  uint8_t slot = chunk->code[offset + 1];
+  printf("%-16s %4d\n", name, slot);
+  return offset + 2;
+}
+
+
+static int jumpInstruction(const char* name, int sign, Chunk* chunk, int offset) {
+    uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
+    jump |= chunk->code[offset + 2];
+    printf("%-16s %4d -> %d\n", name, offset,
+         offset + 3 + sign * jump);
+    return offset + 3;
+}
+
 int disassembleInstruction(Chunk* chunk, int offset) {
     //Print the offset !
     printf("%04d ", offset);
@@ -93,6 +126,12 @@ int disassembleInstruction(Chunk* chunk, int offset) {
         
         case OP_PRINT:
             return simpleInstruction("OP_PRINT", offset);
+
+        case OP_JUMP:
+            return jumpInstruction("OP_JUMP", 1, chunk, offset);
+        
+        case OP_JUMP_IF_FALSE:
+            return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
         
         //If it is OP_Return then return, Simple Instructions
         case OP_RETURN:
@@ -102,28 +141,4 @@ int disassembleInstruction(Chunk* chunk, int offset) {
             printf("Unknown opcode %d\n", instruction);
             return offset + 1;
     }
-}
-
-/*Method to read constant instructions !! */
-static int constantInstruction(const char* name, Chunk* chunk, int offset) {
-    //Store the constant (which should be next to OP code hence +1)
-    uint8_t constant = chunk->code[offset+1];
-    //print the name and the constant
-    printf("%-16s %4d ' ", name, constant);
-    //get the value from the constant pool
-    printValue(chunk->constants.values[constant]);
-    printf("'\n");
-    return offset+2;
-}
-
-static int simpleInstruction(const char* name, int offset) {
-    printf("%s\n", name);
-    return offset + 1;
-}
-
-static int byteInstruction(const char* name, Chunk* chunk,
-                           int offset) {
-  uint8_t slot = chunk->code[offset + 1];
-  printf("%-16s %4d\n", name, slot);
-  return offset + 2;
 }

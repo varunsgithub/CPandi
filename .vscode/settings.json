@@ -9,6 +9,8 @@
         "locale": "c",
         "optional": "c",
         "ratio": "c",
-        "vector": "c"
+        "vector": "c",
+        "scanner.h": "c",
+        "string.h": "c"
     }
 }

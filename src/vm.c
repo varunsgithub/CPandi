@@ -96,6 +96,9 @@ static InterpretResult run() {
     /*The read constant macro will read the index number of the constant value, and fetch 
     it from the value constant pool*/
     #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+    /*This macros helps read the number of places the body of the conditional occupies*/
+    #define READ_SHORT() \
+        (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8 | vm.ip[-1])))
     /*This macro helps read the string from the stack*/
     #define READ_STRING() AS_STRING(READ_CONSTANT())
     //MACRO for binary operations !!!
@@ -220,6 +223,17 @@ static InterpretResult run() {
                 printf("\n");
                 break;
             }
+            case OP_JUMP:  {
+                uint16_t offset = READ_SHORT();
+                vm.ip += offset;
+                break;
+            }
+
+            case OP_JUMP_IF_FALSE: {
+                uint16_t offset = READ_SHORT();
+                if (isFalsey(peek(0))) vm.ip += offset;
+                break;
+            }
             case OP_RETURN: {
                 //When a return is read, the stack is popped !!
                 printValue(pop());
@@ -232,6 +246,7 @@ static InterpretResult run() {
     //Undefine the macros -> since they are function specific.
     #undef READ_BYTE
     #undef READ_STRING
+    #undef READ_SHORT
     #undef READ_CONSTANT
     #undef BINARY_OP
 }
