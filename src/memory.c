@@ -24,9 +24,18 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
     return result;
 }
 
+/*This method is used to clean the objects first by casting the objects to their respective types.*/
 static void freeObject(Obj* object) {
     switch (object->type) {
         //Cast the object to the correct type
+        
+        case OBJ_FUNCTION: {
+            ObjFunction* function = (ObjFunction*) object;
+            freeChunk(&function->chunk);
+            FREE(ObjFunction, object);
+            break;
+        }
+        
         case OBJ_STRING: {
             ObjString* string = (ObjString*)object;
             //Then clean the char array for a string including the null terminator (+1)

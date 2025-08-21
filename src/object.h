@@ -3,9 +3,12 @@
 
 #include "common.h"
 #include "value.h"
+#include "chunk.h"
 
 /*These macro fetches the type identifier*/
 #define OBJ_TYPE(value)     (AS_OBJ(value)->type)
+
+#define IS_FUNCTION(value)  isObjType(value, OBJ_FUNCTION)
 
 /*These macros check if the given the values are of the requisite type*/
 #define IS_STRING(value)    isObjType(value, OBJ_STRING)
@@ -14,8 +17,12 @@
 #define AS_STRING(value)    ((ObjString*) AS_OBJ(value))
 #define AS_CSTRING(value)   (((ObjString*) AS_OBJ(value)) -> chars)
 
+/*These macros help in downcasting the Obj pointers to a Function object*/
+#define AS_FUNCTION(value)  ((ObjFunction*)AS_OBJ(value))
+
 /*These are the identifiers type which help identify the Object*/
 typedef enum {
+    OBJ_FUNCTION,
     OBJ_STRING,
 } ObjType;
 
@@ -27,6 +34,14 @@ struct Obj {
     struct Obj* next;
 };
 
+
+typedef struct {
+    Obj obj;
+    int arity;
+    Chunk chunk;
+    ObjString* name;
+} ObjFunction;
+
 struct ObjString {
     //The obj pointer stores the type !
     Obj obj;
@@ -34,6 +49,9 @@ struct ObjString {
     char* chars;
     uint32_t hash;
 };
+
+/*This method initiallizes a new function object*/
+ObjFunction* newFunction();
 
 ObjString* takeString(char* chars, int length);
 

@@ -52,9 +52,18 @@ typedef struct {
     int depth;
 } Local;
 
+/*This enum helps the code distinguish between the main() function and the sub functions defined under it*/
+typedef enum {
+    TYPE_FUNCTION,
+    TYPE_SCRIPT
+} FunctionType;
+
 /*The struct creates an array of locals and has fields to keep a track of the length of the array
 and the max depth*/
 typedef struct {
+    ObjFunction* function;
+    FunctionType type;
+
     Local locals[UINT8_COUNT];
     int localCount;
     int scopeDepth;
@@ -62,6 +71,12 @@ typedef struct {
 
 Parser parser;
 Compiler* current = NULL;
+
+/*This method helps return the position of the current chunk*/
+static Chunk* currentChunk() {
+    return &current->function->chunk;
+}
+
 Chunk* compilingChunk;
 
 /*The function returns the current array of compiled chunk*/
@@ -147,6 +162,18 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
     emitByte(byte2);
 }
 
+/*This method helps the loop to re start from the beginning*/
+static void emitLoop(int loopStart) {
+    emitByte(OP_LOOP);
+
+    //take the current position subtract the loop start point and add 2 for size of OP_LOOP size
+    int offset = currentChunk()->count - loopStart + 2;
+    if (offset > UINT16_MAX) error("Loop body is too large maccha");
+
+    emitByte((offset>>8) & 0xff);
+    emitByte(offset & 0xff);
+}
+
 /*This method emits two placeholder address locations which are updated later*/
 static int emitJump(uint8_t instruction) {
     emitByte(instruction);
@@ -188,19 +215,31 @@ static void patchJump(int offset) {
     currentChunk()->code[offset+1] = jump & 0xff;
 }
 
-static void initCompiler(Compiler* compiler) {
+static void initCompiler(Compiler* compiler, FunctionType type) {
+    compiler->function = NULL;
+    compiler->type = type;
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
+    compiler->function = newFunction();
     current = compiler;
+
+    //this is done so that the compiler's initial slot is not available for users to use
+    //its reserved for the VM.
+    Local* local = &current->locals[current->localCount++];
+    local->depth = 0;
+    local->name.start = "";
+    local->name.length = 0;
 }
 
-static void endCompiler() {
+static ObjFunction* endCompiler() {
     emitReturn();
+    ObjFunction* function = current->function;
     #ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
-        disassembleChunk(currentChunk(), "code");
+        disassembleChunk(currentChunk(), function->name != NULL ? function->name->chars : "<script>");
     }
     #endif
+    return function;
 }
 
 /*Increments the scope depth by 1*/
@@ -416,6 +455,62 @@ static void expressionStatement() {
     emitByte(OP_POP);
 }
 
+/*Method helps work on for statements*/
+static void forStatement() {
+    beginScope();
+    
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+    if (match(TOKEN_SEMICOLON)) {
+        //do nothing
+    } else if(match(TOKEN_VAR)) {
+        varDeclaration();
+    } else {
+        expressionStatement();
+    }
+
+    int loopStart = currentChunk()->count;
+    
+    int exitJump = -1;
+    if (!match(TOKEN_SEMICOLON)) {
+        expression();
+        consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+
+        // Jump out of the loop if the condition is false.
+        exitJump = emitJump(OP_JUMP_IF_FALSE);
+        emitByte(OP_POP); // Condition.
+    }
+
+    if (!match(TOKEN_RIGHT_PAREN)) {
+
+        int bodyJump = emitJump(OP_JUMP);
+        
+        int incrementStart = currentChunk()->count;
+        
+        expression();
+        
+        emitByte(OP_POP);
+        
+        consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        emitLoop(loopStart);
+        
+        loopStart = incrementStart;
+        
+        patchJump(bodyJump);
+    }
+
+    statement();
+    emitLoop(loopStart);
+
+    if (exitJump != -1) {
+        patchJump(exitJump);
+        emitByte(OP_POP); // Condition.
+    }
+
+
+    endScope();
+}
+
 /*Helps with analyzing an if statement*/
 static void ifStatement() {
     //consume the left parenthesis
@@ -448,6 +543,31 @@ static void printStatement() {
     expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after value.");
     emitByte(OP_PRINT);
+}
+
+/*The while conditional statement method and its jumps*/
+static void whileStatement() {
+    int loopStart = currentChunk()->count;
+    //consume the left parenthesis
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+    //evaluate the expression
+    expression();
+    //consume the right token
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+    //have an exit point ready
+    int exitJump = emitJump(OP_JUMP_IF_FALSE);
+    //pop that exp
+    emitByte(OP_POP);
+    
+    //compile the body of the while statement
+    statement();
+    
+    emitLoop(loopStart);
+    //jump here the moment you dont satisfy the condition
+    patchJump(exitJump);
+    //pop that stuff
+    emitByte(OP_POP);
 }
 
 /*This method is an error synchronization technique where the Panic mode works by
@@ -495,8 +615,12 @@ static void declaration() {
 static void statement() {
     if (match(TOKEN_PRINT)) {
         printStatement();
+    } else if (match(TOKEN_FOR)) {
+        forStatement();
     } else if (match(TOKEN_IF)) {
         ifStatement();
+    } else if (match(TOKEN_WHILE)) {
+        whileStatement();
     } else if (match(TOKEN_LEFT_BRACE)) {
         //begin the scope !
         beginScope();
@@ -682,14 +806,12 @@ static ParseRule* getRule(TokenType type) {
     return &rules[type];
 }
 
-/*When compiling, the tokenized source code and the chunk where the 
-processed bytecode is to be stored is passed as args to the function*/
-bool compile(const char* source, Chunk* chunk) {
+/*When compiling, the tokenized source code is passed as args to the function*/
+ObjFunction* compile(const char* source) {
     
     initScanner(source);
     Compiler compiler;
-    initCompiler(&compiler);
-    compilingChunk = chunk;
+    initCompiler(&compiler, TYPE_SCRIPT);
 
     //Initialization for the bool variables in the parser !
     parser.hadError = false;
@@ -702,8 +824,6 @@ bool compile(const char* source, Chunk* chunk) {
         declaration();
     }
     
-    //End the compile function with writing return in the compiled chunk !
-    endCompiler();
-    return !parser.hadError;
-    
+    ObjFunction* function = endCompiler();
+    return parser.hadError ? NULL : function;
 }

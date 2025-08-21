@@ -15,6 +15,7 @@ VM vm;
 static void resetStack() {
     //This shows that the stack is empty since the stackTop points to 0
     vm.stackTop = vm.stack;
+    vm.frameCount = 0;
 }
 
 /*Print a runtime error for unlimited args*/
@@ -27,8 +28,11 @@ static void runtimeError(const char* format, ...) {
     va_end(args);
     
     fputs("\n", stderr);
-    size_t instruction = vm.ip - vm.chunk->code - 1;
-    int line = vm.chunk-> lines[instruction];
+    
+    CallFrame* frame = &vm.frames[vm.frameCount - 1];
+    size_t instruction = frame->ip - frame->function->chunk.code - 1;
+    int line = frame->function->chunk.lines[instruction];
+    
     fprintf(stderr, "[line %d] in script\n", line);
     resetStack();
 }
@@ -90,15 +94,18 @@ static void concatenate() {
 
 
 static InterpretResult run() {
+    CallFrame* frame = &vm.frames[vm.frameCount - 1];
+
     //Start with defining macros
     /*The read byte macro, dereferences and reads the current instruction pointer*/
-    #define READ_BYTE() (*vm.ip++)
+    #define READ_BYTE() (*frame->ip++)
     /*The read constant macro will read the index number of the constant value, and fetch 
     it from the value constant pool*/
-    #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+    #define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
     /*This macros helps read the number of places the body of the conditional occupies*/
     #define READ_SHORT() \
-        (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8 | vm.ip[-1])))
+        (frame->ip += 2, \
+        (uint16_t)((frame->ip[-2] << 8 | frame->ip[-1])))
     /*This macro helps read the string from the stack*/
     #define READ_STRING() AS_STRING(READ_CONSTANT())
     //MACRO for binary operations !!!
@@ -125,7 +132,9 @@ static InterpretResult run() {
             printf("\n");
         //doing pointer math to convert the ip back to a relative offset from the beginning.
         // eg if you started at x8828 and beginning is x8820 then it starts with offset 8 :)
-            disassembleInstruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
+            disassembleInstruction(&frame->function->chunk,
+            (int)(frame->ip - frame->function->chunk.code));
+
         #endif
         
         uint8_t instruction;
@@ -145,12 +154,12 @@ static InterpretResult run() {
             case OP_GET_LOCAL: {
                 uint8_t slot = READ_BYTE();
                 //this operation finds the location of the element on the stack and pushes it on the top again
-                push(vm.stack[slot]);
+                push(frame->slots[slot]);
                 break;
             }
             case OP_SET_LOCAL: {
                 uint8_t slot = READ_BYTE();
-                vm.stack[slot] = peek(0);
+                frame->slots[slot] = peek(0);
                 break;
             }
 
@@ -218,22 +227,31 @@ static InterpretResult run() {
                 }
                 push(NUMBER_VAL(-AS_NUMBER(pop())));
                 break;
+
             case OP_PRINT: {
                 printValue(pop());
                 printf("\n");
                 break;
             }
+
             case OP_JUMP:  {
                 uint16_t offset = READ_SHORT();
-                vm.ip += offset;
+                frame->ip += offset;
                 break;
             }
 
             case OP_JUMP_IF_FALSE: {
                 uint16_t offset = READ_SHORT();
-                if (isFalsey(peek(0))) vm.ip += offset;
+                if (isFalsey(peek(0))) frame->ip += offset;
                 break;
             }
+            
+            case OP_LOOP: {
+                uint16_t offset = READ_SHORT();
+                frame->ip -= offset;
+                break;
+            }
+
             case OP_RETURN: {
                 //When a return is read, the stack is popped !!
                 printValue(pop());
@@ -253,28 +271,17 @@ static InterpretResult run() {
 
 
 InterpretResult interpret(const char* source) {
-    //Create a new chunk for the bytecode !!
-    Chunk chunk;
+    ObjFunction* function = compile(source);
+    if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
-    //initialize the chunk !
-    initChunk(&chunk);
+    //The first value on the stack is the outermost function on the stack
+    push(OBJ_VAL(function));
 
-    if (!compile(source, &chunk)) {
-        
-        freeChunk(&chunk);
-        
-        return INTERPRET_COMPILE_ERROR;
-    }
+    //next the frame pointer is set !
+    CallFrame* frame = &vm.frames[vm.frameCount++];
+    frame->function = function;
+    frame->ip = function->chunk.code;
+    frame->slots = vm.stack;
 
-    //the virtual machine's bytecode chunk is linked to the compiled chunk !1
-    vm.chunk = &chunk;
-    //the instruction pointer now points to the array of bytecode !!!
-    vm.ip = vm.chunk->code;
-
-
-    InterpretResult result = run();
-
-    //delete the chunk and return the result !
-    freeChunk(&chunk);
-    return result;
+    return run();
 }
