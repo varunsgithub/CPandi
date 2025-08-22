@@ -55,12 +55,17 @@ typedef struct {
 /*This enum helps the code distinguish between the main() function and the sub functions defined under it*/
 typedef enum {
     TYPE_FUNCTION,
+    //the outer layer (the main function)
     TYPE_SCRIPT
 } FunctionType;
 
+
 /*The struct creates an array of locals and has fields to keep a track of the length of the array
 and the max depth*/
-typedef struct {
+typedef struct Compiler {
+    //keeps a track of the previous enclosing fn
+    struct Compiler* enclosing;
+
     ObjFunction* function;
     FunctionType type;
 
@@ -79,10 +84,6 @@ static Chunk* currentChunk() {
 
 Chunk* compilingChunk;
 
-/*The function returns the current array of compiled chunk*/
-static Chunk* currentChunk() {
-    return compilingChunk;
-}
 
 static void errorAt(Token* token, const char* message) {
     //if the panic mode has been set, just exit the method (This ensures bytecode is read)
@@ -185,6 +186,7 @@ static int emitJump(uint8_t instruction) {
 }
 
 static void emitReturn() {
+    emitByte(OP_NIL);
     emitByte(OP_RETURN);
 }
 
@@ -216,12 +218,17 @@ static void patchJump(int offset) {
 }
 
 static void initCompiler(Compiler* compiler, FunctionType type) {
+    compiler->enclosing = current;
     compiler->function = NULL;
     compiler->type = type;
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
     compiler->function = newFunction();
     current = compiler;
+
+    if (type != TYPE_SCRIPT) {
+        current->function->name = copyString(parser.previous.start, parser.previous.length);
+    }
 
     //this is done so that the compiler's initial slot is not available for users to use
     //its reserved for the VM.
@@ -239,6 +246,8 @@ static ObjFunction* endCompiler() {
         disassembleChunk(currentChunk(), function->name != NULL ? function->name->chars : "<script>");
     }
     #endif
+    //when the compiler is done compiling the code, the enclsing compiler is restored.
+    current = current->enclosing;
     return function;
 }
 
@@ -347,8 +356,9 @@ static uint8_t parseVariable(const char* errorMessage) {
     return identifierConstant(&parser.previous);
 }
 
-/*This helper function helps marking the */
+/*This helper function helps marking the object as initialized by updating the depth from -1 to their actual values*/
 static void markInitialized() {
+    if (current->scopeDepth == 0) return;
     current->locals[current->localCount - 1].depth = current->scopeDepth;
 }
 
@@ -360,6 +370,21 @@ static void defineVariable(uint8_t global) {
     }
     
     emitBytes(OP_DEFINE_GLOBAL, global);
+}
+
+static uint8_t argumentList() {
+    uint8_t argCount = 0;
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            expression();
+            if (argCount == 255) {
+                error("Can't have more than 255 arguments.");
+            }
+            argCount++;
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+    return argCount;
 }
 
 /*The and will */
@@ -405,6 +430,15 @@ static void binary(bool canAssign) {
     }
 }
 
+/*The call method will count the arguments and then emit the OP_CODE !*/
+static void call(bool canAssign) {
+    //count the number of arguments using the 
+    //arguments in theh arg count !
+    uint8_t argCount = argumentList();
+    //emit a call OP_CODE !
+    emitBytes(OP_CALL, argCount);
+}
+
 static void literal(bool canAssign) {
     switch(parser.previous.type) {
         case TOKEN_FALSE:   emitByte(OP_FALSE); break;
@@ -428,6 +462,51 @@ static void block() {
     }
     //consume the token right brace !
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
+}
+
+/*The method */
+static void function(FunctionType type) {
+    
+    Compiler compiler;
+    
+    initCompiler(&compiler, type);
+    
+    beginScope();
+
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after function name");
+
+    //Here is where we add parameters in the function
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            //increase the parameter count
+            current->function->arity++;
+            //if the same is less than 255 then continue
+            if (current->function->arity > 255) {
+                errorAtCurrent("Can't have more than 255 parameters");
+            }
+            //the parameter is then saved and defined in the variable's local stack.
+            uint8_t constant = parseVariable("Expect a parameter's name");
+            defineVariable(constant);
+        } while (match(TOKEN_COMMA));   
+    }
+
+
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters");
+    consume(TOKEN_LEFT_BRACE, "Expect '{' after the function body.");
+    block();
+
+    ObjFunction* function = endCompiler();
+    emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
+}
+
+/*This method helps in function declaration*/
+/*A function declaration is considered as a variable declaration and the same is instantly marked as initialized*/
+static void funDeclaration() {
+    //The name is defined and read.
+    uint8_t global = parseVariable("Expect function name");
+    markInitialized();
+    function(TYPE_FUNCTION);
+    defineVariable(global);
 }
 
 /*This method helps with variable declaration in the stataments method*/
@@ -545,6 +624,25 @@ static void printStatement() {
     emitByte(OP_PRINT);
 }
 
+/*This method will compile the return statement for a function*/
+static void returnStatement() {
+    if (current->type == TYPE_SCRIPT) {
+        error("Can't return from top level code maccha");
+    }
+    
+    //match the semi colon token !
+    if (match(TOKEN_SEMICOLON)) {
+        //emit an empty return
+        emitReturn();
+    } else {
+        //evaluate the expression
+        expression();
+        //consume the semicolon and emit an return.
+        consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+        emitByte(OP_RETURN);
+    }
+}
+
 /*The while conditional statement method and its jumps*/
 static void whileStatement() {
     int loopStart = currentChunk()->count;
@@ -598,8 +696,13 @@ static void synchronize() {
 }
 
 static void declaration() {
+    //if the token matches the function declaration
+    if (match(TOKEN_FUN)) {
+        //start the function declaration !
+        funDeclaration();
+    }
     //if you end up matching a variable declaration
-    if (match(TOKEN_VAR)) {
+    else if (match(TOKEN_VAR)) {
         //go to the variable declaration method
         varDeclaration();
     } else {
@@ -619,6 +722,8 @@ static void statement() {
         forStatement();
     } else if (match(TOKEN_IF)) {
         ifStatement();
+    } else if (match(TOKEN_RETURN)) {
+        returnStatement();
     } else if (match(TOKEN_WHILE)) {
         whileStatement();
     } else if (match(TOKEN_LEFT_BRACE)) {
@@ -724,7 +829,7 @@ TOKENS. The pratt parser then fetches the precedence basis the table !*/
 //The array is a ParseRule array !!!
 ParseRule rules[] = {
     //Token = {Prefix (ParseFn ptr), Infix (ParseFn ptr), Precedence:)}
-  [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
+  [TOKEN_LEFT_PAREN]    = {grouping, call,   PREC_CALL},
   [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
   [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE}, 
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},

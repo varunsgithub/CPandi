@@ -10,6 +10,8 @@
 
 #define IS_FUNCTION(value)  isObjType(value, OBJ_FUNCTION)
 
+#define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
+
 /*These macros check if the given the values are of the requisite type*/
 #define IS_STRING(value)    isObjType(value, OBJ_STRING)
 
@@ -17,12 +19,17 @@
 #define AS_STRING(value)    ((ObjString*) AS_OBJ(value))
 #define AS_CSTRING(value)   (((ObjString*) AS_OBJ(value)) -> chars)
 
+
 /*These macros help in downcasting the Obj pointers to a Function object*/
 #define AS_FUNCTION(value)  ((ObjFunction*)AS_OBJ(value))
+
+#define AS_NATIVE(value) \
+    (((ObjNative*)AS_OBJ(value))->function)
 
 /*These are the identifiers type which help identify the Object*/
 typedef enum {
     OBJ_FUNCTION,
+    OBJ_NATIVE,
     OBJ_STRING,
 } ObjType;
 
@@ -42,6 +49,13 @@ typedef struct {
     ObjString* name;
 } ObjFunction;
 
+typedef Value (*NativeFn)(int argCount, Value* args);
+
+typedef struct {
+    Obj obj;
+    NativeFn function;
+} ObjNative;
+
 struct ObjString {
     //The obj pointer stores the type !
     Obj obj;
@@ -52,6 +66,9 @@ struct ObjString {
 
 /*This method initiallizes a new function object*/
 ObjFunction* newFunction();
+
+/*This method is a constructor for the native functions*/
+ObjNative* newNative(NativeFn function);
 
 ObjString* takeString(char* chars, int length);
 
